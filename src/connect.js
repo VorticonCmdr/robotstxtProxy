@@ -22,7 +22,7 @@ export function splitHostPort(authority, defaultPort = 443) {
   return [authority.slice(0, lastColon), Number.parseInt(authority.slice(lastColon + 1), 10) || defaultPort];
 }
 
-export function createConnectHandler({ robots, config, logger, mitm }) {
+export function createConnectHandler({ robots, config, logger, mitm, blockLog }) {
   return async function handleConnect(req, clientSocket, head) {
     if (mitm) return mitm.handleConnect(req, clientSocket, head);
 
@@ -33,7 +33,7 @@ export function createConnectHandler({ robots, config, logger, mitm }) {
       decision = await robots.decide(`https://${host}/`, config.robotsUa || '*');
     } catch (err) {
       logger?.error('connect decision error', { host, error: err.message });
-      decision = { allowed: false, reason: 'error' };
+      decision = { allowed: false, reason: 'error', line: 0 };
     }
 
     logger?.info(decision.allowed ? 'connect-allow' : 'connect-block', {
@@ -43,6 +43,18 @@ export function createConnectHandler({ robots, config, logger, mitm }) {
     });
 
     if (!decision.allowed) {
+      blockLog?.record({
+        ts: Date.now(),
+        method: 'CONNECT',
+        url: `https://${host}/`,
+        origin: `https://${host}`,
+        reason: decision.reason,
+        line: decision.line || 0,
+        dest: 'connect',
+        ua: req.headers?.['user-agent'] || null,
+        referer: null,
+        clientIp: clientSocket.remoteAddress || null,
+      });
       clientSocket.write(
         'HTTP/1.1 403 Forbidden\r\n' +
           'Content-Type: text/plain; charset=utf-8\r\n' +

@@ -43,7 +43,7 @@ export async function createMitm({ robots, config, logger }) {
     return { key: leafKeyPem, cert: certPem };
   }
 
-  const requestHandler = createRequestHandler({ robots, logger, mode: 'intercept' });
+  const requestHandler = createRequestHandler({ robots, config, logger, mode: 'intercept' });
 
   const fallback = getCertForHost('localhost');
   const interceptServer = https.createServer(

@@ -32,6 +32,7 @@ test('MITM: intercepts HTTPS and blocks a disallowed path with our trusted CA', 
 
   const config = loadConfig({
     HTTPS_MODE: 'mitm',
+    BLOCK_MODE: '403',
     CA_CERT_PATH: caCertPath,
     CA_KEY_PATH: caKeyPath,
   });

@@ -9,6 +9,7 @@ import { RobotsCache } from './robots.js';
 import { createRequestHandler } from './httpProxy.js';
 import { createConnectHandler } from './connect.js';
 import { createMitm } from './mitm.js';
+import { BlockLog } from './blockLog.js';
 
 /**
  * Build (but do not start) the proxy server. Exposed for tests.
@@ -21,16 +22,17 @@ export async function createProxy({ config, logger, fetchImpl } = {}) {
   config = config || loadConfig();
   logger = logger || createLogger(config.logLevel);
   const robots = new RobotsCache({ config, logger, fetchImpl });
+  const blockLog = new BlockLog();
 
   let mitm = null;
   if (config.httpsMode === 'mitm') {
     mitm = await createMitm({ robots, config, logger });
   }
 
-  const server = http.createServer(createRequestHandler({ robots, logger, mode: 'proxy' }));
-  server.on('connect', createConnectHandler({ robots, config, logger, mitm }));
+  const server = http.createServer(createRequestHandler({ robots, config, logger, blockLog, mode: 'proxy' }));
+  server.on('connect', createConnectHandler({ robots, config, logger, mitm, blockLog }));
 
-  return { server, config, logger, robots };
+  return { server, config, logger, robots, blockLog };
 }
 
 async function main() {

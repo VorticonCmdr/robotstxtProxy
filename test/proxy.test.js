@@ -14,8 +14,8 @@ async function listen(server) {
   return server.address().port;
 }
 
-async function startProxy({ fetchImpl } = {}) {
-  const config = loadConfig({ HTTPS_MODE: 'host-only' });
+async function startProxy({ fetchImpl, extraEnv = {} } = {}) {
+  const config = loadConfig({ HTTPS_MODE: 'host-only', BLOCK_MODE: '403', ...extraEnv });
   const { server } = await createProxy({ config, fetchImpl, logger: silent });
   const port = await listen(server);
   return { server, port };

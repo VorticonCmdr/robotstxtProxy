@@ -25,10 +25,16 @@ export function loadConfig(env = process.env) {
       throw new Error(`HTTPS_MODE must be "host-only" or "mitm", got ${JSON.stringify(httpsMode)}`);
     }
 
+    const blockMode = str('BLOCK_MODE', 'smart');
+    if (blockMode !== 'smart' && blockMode !== '403' && blockMode !== '204') {
+      throw new Error(`BLOCK_MODE must be "smart", "403", or "204", got ${JSON.stringify(blockMode)}`);
+    }
+
     return {
       port: int('PORT', 8080),
       host: str('HOST', '0.0.0.0'),
       httpsMode,
+      blockMode,
       // Fixed UA override; when unset we use the request's own User-Agent.
       robotsUa: str('ROBOTS_UA', null),
       cacheTtlMs: int('CACHE_TTL_MS', 3_600_000),
