@@ -64,6 +64,26 @@ to sniffing the URL extension (`.js`, `.css`, `.png`, `.woff2`, …).
 Set `BLOCK_MODE=403` to revert to always returning a plain-text 403, or `BLOCK_MODE=204` for
 always-silent No Content.
 
+### Finding blocked requests in browser DevTools
+
+Every blocked response carries three headers regardless of its status code or content type:
+
+```
+X-Robots-Blocked: true
+X-Robots-Txt-Reason: robots-disallow
+X-Robots-Txt-Line: 3
+```
+
+Filter the Network panel to show only blocked requests:
+
+| Browser | Filter expression |
+|---|---|
+| **Chrome / Edge** | `has-response-header:X-Robots-Blocked` |
+| **Firefox** | type `X-Robots-Blocked` in the filter box |
+| **Safari** | add a Response Headers column, filter by `X-Robots-Blocked` |
+
+Click any matching row → Response Headers to see the reason and the matched robots.txt line.
+
 ## Live block log
 
 A self-contained web dashboard is available at `http://<proxy-host>:<port>/_proxy/` with no

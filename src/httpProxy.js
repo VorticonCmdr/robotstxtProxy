@@ -40,13 +40,27 @@ function detectDest(req, targetUrl) {
   }
 }
 
+// Builds the headers object for every blocked response.
+// X-Robots-Blocked lets DevTools filter blocked requests regardless of status code.
+// Chrome/Edge: filter box → has-response-header:X-Robots-Blocked
+// Firefox:     filter box → X-Robots-Blocked
+function blockHeaders(decision, extra = {}) {
+  const h = {
+    'x-robots-blocked': 'true',
+    'x-robots-txt-reason': decision.reason,
+    ...extra,
+  };
+  if (decision.line) h['x-robots-txt-line'] = String(decision.line);
+  return h;
+}
+
 function blockResponse(req, res, targetUrl, decision, blockMode) {
   if (blockMode === '403') {
-    res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
+    res.writeHead(403, blockHeaders(decision, { 'content-type': 'text/plain; charset=utf-8' }));
     return res.end(blockText(targetUrl, decision));
   }
   if (blockMode === '204') {
-    res.writeHead(204);
+    res.writeHead(204, blockHeaders(decision));
     return res.end();
   }
 
@@ -56,33 +70,33 @@ function blockResponse(req, res, targetUrl, decision, blockMode) {
     case 'document':
     case 'iframe':
     case 'frame':
-      res.writeHead(403, { 'content-type': 'text/html; charset=utf-8' });
+      res.writeHead(403, blockHeaders(decision, { 'content-type': 'text/html; charset=utf-8' }));
       return res.end(blockHtml(targetUrl, decision));
 
     case 'script':
     case 'worker':
     case 'sharedworker':
     case 'serviceworker':
-      res.writeHead(200, { 'content-type': 'application/javascript; charset=utf-8' });
+      res.writeHead(200, blockHeaders(decision, { 'content-type': 'application/javascript; charset=utf-8' }));
       return res.end('// blocked by robots.txt\n');
 
     case 'style':
-      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      res.writeHead(200, blockHeaders(decision, { 'content-type': 'text/css; charset=utf-8' }));
       return res.end('/* blocked by robots.txt */\n');
 
     case 'image':
-      res.writeHead(200, { 'content-type': 'image/gif', 'content-length': TRANSPARENT_GIF.length });
+      res.writeHead(200, blockHeaders(decision, { 'content-type': 'image/gif', 'content-length': TRANSPARENT_GIF.length }));
       return res.end(TRANSPARENT_GIF);
 
     case 'fetch':
     case 'xhr':
     case 'manifest':
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.writeHead(200, blockHeaders(decision, { 'content-type': 'application/json; charset=utf-8' }));
       return res.end('{}\n');
 
     default:
       // font, audio, video, embed, object, empty, prefetch, preload, unknown
-      res.writeHead(204);
+      res.writeHead(204, blockHeaders(decision));
       return res.end();
   }
 }
