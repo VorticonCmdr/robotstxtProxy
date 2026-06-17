@@ -15,8 +15,9 @@ done
 if [ -f "$CA_FILE" ]; then
   NSSDB="/home/seluser/.pki/nssdb"
   mkdir -p "$NSSDB"
-  # Create a new NSS database if one doesn't exist yet.
-  certutil -N --empty-password -d "sql:$NSSDB" 2>/dev/null || true
+  # modutil -create builds the NSS database structure without generating key material,
+  # avoiding the multi-minute CPU spin that certutil -N causes in Docker Desktop.
+  modutil -create -dbdir "sql:$NSSDB" -force 2>/dev/null || true
   # Import the CA; CT,, = trusted CA for TLS.
   certutil -A -n "robotstxt-proxy" -t "CT,," -i "$CA_FILE" -d "sql:$NSSDB"
   echo "[chrome-init] CA certificate imported into NSS database."
