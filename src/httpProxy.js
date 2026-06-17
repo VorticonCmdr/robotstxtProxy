@@ -157,6 +157,22 @@ export function createRequestHandler({ robots, config, logger, blockLog, mode = 
 
     if (/^https?:\/\//i.test(req.url)) {
       targetUrl = req.url;
+      // When the browser routes /_proxy/* through the proxy (absolute-form request
+      // aimed at the proxy's own address), intercept and serve the dashboard directly
+      // instead of trying to forward to ourselves.
+      if (config) {
+        try {
+          const u = new URL(targetUrl);
+          const isLoopback = u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '::1';
+          const effectivePort = Number(u.port || (u.protocol === 'https:' ? 443 : 80));
+          if (isLoopback && effectivePort === config.port &&
+              (u.pathname === '/' || u.pathname.startsWith('/_proxy'))) {
+            req.url = u.pathname + u.search;
+            const handled = serveDashboard(req, res, blockLog);
+            if (handled !== false) return;
+          }
+        } catch { /* malformed URL, fall through to normal handling */ }
+      }
     } else if (mode === 'intercept') {
       const host = req.headers.host;
       if (!host) return badRequest(res, 'Missing Host header');
