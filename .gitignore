@@ -1,3 +1,6 @@
+# Generated MITM CA (private key — never commit)
+certs/
+
 # Logs
 logs
 *.log
