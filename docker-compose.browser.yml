@@ -1,0 +1,35 @@
+services:
+  robotstxt-proxy:
+    build: .
+    image: robotstxt-proxy
+    ports:
+      - "8080:8080"       # Proxy + Dashboard: http://localhost:8080/_proxy/
+    environment:
+      HTTPS_MODE: mitm    # Full path-based filtering for HTTPS
+      BLOCK_MODE: smart   # Resource-aware responses (empty JS/CSS/GIF instead of 403)
+      LOG_LEVEL: info
+    volumes:
+      - ./certs:/app/certs  # CA is generated here on first run; persisted across restarts
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s   # Give the proxy time to generate the CA cert before health checks
+
+  chrome:
+    build:
+      context: ./chrome   # Custom Dockerfile: installs CA cert + sets Chrome proxy policy
+    ports:
+      - "7900:7900"       # noVNC → open http://localhost:7900 in your Mac browser
+    environment:
+      SE_VNC_NO_PASSWORD: "1"
+      SCREEN_WIDTH: "1600"
+      SCREEN_HEIGHT: "900"
+    volumes:
+      - ./certs:/tmp/ca:ro  # Entrypoint reads ca.crt from here and installs it
+    depends_on:
+      robotstxt-proxy:
+        condition: service_healthy   # Wait until the proxy is up AND the CA cert exists
+    restart: unless-stopped

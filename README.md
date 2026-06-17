@@ -156,6 +156,39 @@ docker run -p 8080:8080 \
 For `mitm` mode the compose file mounts `./certs` as a volume so the CA persists across
 restarts. Trust the same `certs/ca.crt` on your clients.
 
+## Browser container (isolated Chrome via noVNC)
+
+Run Chrome in a Docker container that is pre-wired to the proxy — no system-wide proxy
+settings on your Mac required. The container handles CA trust automatically.
+
+```bash
+docker compose -f docker-compose.browser.yml up --build
+```
+
+Then open in your Mac browser:
+
+| URL | What you get |
+|---|---|
+| `http://localhost:7900` | noVNC → Chrome inside the container (proxy + CA already set up) |
+| `http://localhost:8080/_proxy/` | Live block-log dashboard |
+
+On first run the proxy generates `certs/ca.crt`. The Chrome container waits for this
+file, installs it into both the system trust store and Chrome's NSS database, then
+starts the browser — no manual cert-trust step needed.
+
+**How it works:**
+- `chrome/Dockerfile` extends `seleniarm/standalone-chromium` (multi-arch: ARM64 + AMD64)
+  and installs `libnss3-tools` for the NSS import.
+- `chrome/policy.json` is a Chrome Managed Policy that sets the proxy to
+  `http://robotstxt-proxy:8080` with a bypass for `robotstxt-proxy` itself (so the
+  dashboard URL resolves without looping through the proxy).
+- `chrome/entrypoint.sh` waits up to 60 s for the CA cert, installs it, then calls
+  the original Selenium entrypoint.
+- The Chrome service `depends_on: robotstxt-proxy: condition: service_healthy`, so it
+  only starts once the proxy is accepting connections.
+
+Works on Apple Silicon and Intel Macs without any extra configuration.
+
 ## Project layout
 
 ```

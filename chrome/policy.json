@@ -1,0 +1,5 @@
+{
+  "ProxyMode": "fixed_servers",
+  "ProxyServer": "http://robotstxt-proxy:8080",
+  "ProxyBypassList": "robotstxt-proxy,localhost,127.0.0.1"
+}
