@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>robotstxtProxy — robots.txt-aware forward proxy</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --warn: #d29922;
+      --danger: #f85149;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --code-bg: #1f2937;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    header .logo span { color: var(--accent); }
+    header .tagline { color: var(--muted); font-size: 0.9rem; }
+    header .badges { margin-left: auto; display: flex; gap: 0.5rem; }
+    header .badge {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent2);
+    }
+
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+    }
+    nav a {
+      padding: 0.75rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+    nav a:hover { color: var(--text); text-decoration: none; }
+    nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    section { margin-bottom: 4rem; }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+    p { color: var(--muted); margin-bottom: 0.75rem; }
+    p strong, li strong { color: var(--text); }
+
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem 3rem;
+      margin-bottom: 2rem;
+    }
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      letter-spacing: -1px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p { font-size: 1.1rem; max-width: 620px; margin: 0 auto 2rem; }
+    .hero .cta {
+      display: inline-flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.4rem;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin: 0.75rem 0;
+    }
+    code {
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    pre code { background: none; padding: 0; }
+
+    .screenshot {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    .screenshot img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .screenshot figcaption {
+      background: var(--surface);
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    .grid { display: grid; gap: 1.5rem; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .card .icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .card h3 { margin-top: 0; }
+    .card p { margin: 0; font-size: 0.9rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      padding: 0.6rem 0.9rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    th { background: var(--surface); font-weight: 600; color: var(--text); }
+    td { color: var(--muted); }
+    td code { color: var(--text); }
+    td strong { color: var(--text); }
+
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag-green { background: #1a3a1a; color: var(--accent2); }
+    .tag-blue  { background: #1a2a4a; color: var(--accent); }
+    .tag-yellow{ background: #3a2a0a; color: var(--warn); }
+    .tag-red   { background: #3a1010; color: var(--danger); }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.8rem; }
+      header { flex-wrap: wrap; }
+      header .badges { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">robots<span>txt</span>Proxy</div>
+    <div class="tagline">Node.js forward proxy · robots.txt-aware</div>
+  </div>
+  <div class="badges">
+    <span class="badge">No runtime deps</span>
+    <span class="badge">Docker ready</span>
+    <span class="badge">MITM HTTPS</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#how-it-works" class="active">How it works</a>
+  <a href="#quick-start">Quick start</a>
+  <a href="#block-log">Block log</a>
+  <a href="#devtools">DevTools</a>
+  <a href="#browser-container">Browser container</a>
+  <a href="#configuration">Configuration</a>
+</nav>
+
+<main>
+
+  <section class="hero">
+    <h1>Block by <span>robots.txt</span><br>— automatically.</h1>
+    <p>A forward HTTP(S) proxy that allows or blocks every request based on the target site's <code>robots.txt</code>. Point your browser at it, watch a live dashboard, inspect blocked resources in DevTools — zero configuration needed.</p>
+    <div class="cta">
+      <a href="https://github.com/VorticonCmdr/robotstxtProxy" class="btn btn-primary">View on GitHub</a>
+      <a href="#quick-start" class="btn btn-secondary">Quick start</a>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works">
+    <h2>How it works</h2>
+    <p>For every outgoing request the proxy fetches <code>/robots.txt</code> from the target origin (cached for 1 h), then uses <strong>Google's reference robots.txt parser</strong> (<a href="https://github.com/VorticonCmdr/google-robotstxt-parser">google-robotstxt-parser</a>) to decide whether the URL is allowed for the request's User-Agent.</p>
+
+    <table>
+      <thead>
+        <tr><th>Traffic</th><th>What the proxy sees</th><th>Filtering</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Plain HTTP</strong></td>
+          <td>full URL + path</td>
+          <td>full path-based rules</td>
+        </tr>
+        <tr>
+          <td><strong>HTTPS <code>host-only</code></strong> (default)</td>
+          <td>hostname only (path is encrypted)</td>
+          <td>host-level only — blocked if <code>/</code> is disallowed</td>
+        </tr>
+        <tr>
+          <td><strong>HTTPS <code>mitm</code></strong></td>
+          <td>full URL + path (TLS intercepted)</td>
+          <td>full path-based rules, same as HTTP</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Fail behaviour</h3>
+    <p>When <code>robots.txt</code> can't be retrieved:</p>
+    <table>
+      <thead><tr><th>Status</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td><code>2xx</code></td><td>Rules applied normally</td></tr>
+        <tr><td><code>4xx</code> (no file)</td><td><span class="tag tag-green">Allow</span> — no restrictions</td></tr>
+        <tr><td><code>5xx</code> / timeout / network error</td><td><span class="tag tag-red">Block</span> — assume restricted</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Smart block responses</h3>
+    <p>Blocked resources get the <strong>least disruptive response</strong> based on the <code>Sec-Fetch-Dest</code> header — no broken images, no JS error-handlers firing, no CSS parse errors.</p>
+
+    <table>
+      <thead><tr><th>Resource type</th><th>Response</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>document</code>, <code>iframe</code></td><td><span class="tag tag-red">403</span> HTML</td><td>user navigated — show an error</td></tr>
+        <tr><td><code>script</code>, <code>worker</code></td><td><span class="tag tag-green">200</span> empty JS</td><td>no <code>net::ERR_FAILED</code>, error handler silent</td></tr>
+        <tr><td><code>style</code></td><td><span class="tag tag-green">200</span> empty CSS</td><td>no DevTools parse error</td></tr>
+        <tr><td><code>image</code></td><td><span class="tag tag-green">200</span> 1×1 transparent GIF</td><td>no broken-image icon</td></tr>
+        <tr><td><code>fetch</code>, <code>xhr</code></td><td><span class="tag tag-green">200</span> <code>{}</code></td><td>JS receives a valid JSON object</td></tr>
+        <tr><td><code>font</code>, <code>audio</code>, <code>video</code></td><td><span class="tag tag-blue">204</span> No Content</td><td>silently ignored</td></tr>
+      </tbody>
+    </table>
+
+    <figure class="screenshot">
+      <img src="img/blocked-by-robots-txt.png" alt="Browser showing a robots.txt-blocked page with a 403 response" />
+      <figcaption>Document navigations that are disallowed by robots.txt receive a plain-text 403 page.</figcaption>
+    </figure>
+  </section>
+
+  <!-- QUICK START -->
+  <section id="quick-start">
+    <h2>Quick start</h2>
+
+    <h3>Local (Node.js)</h3>
+    <pre>npm install
+npm start       # listens on :8080, host-only HTTPS, smart block mode
+npm test        # 31 test cases</pre>
+
+    <pre>curl -x http://localhost:8080 http://example.com/
+curl -x http://localhost:8080 https://example.com/</pre>
+
+    <h3>Docker</h3>
+    <pre>docker compose up --build</pre>
+
+    <p>Configure your browser's HTTP <strong>and</strong> HTTPS proxy to <code>localhost:8080</code>, then browse normally. Blocked resources are silently absorbed; the live dashboard shows what was blocked and why.</p>
+
+    <figure class="screenshot">
+      <img src="img/docker.png" alt="Docker Desktop showing the two containers running" />
+      <figcaption>Docker Desktop with the proxy container healthy and the Chrome container started.</figcaption>
+    </figure>
+  </section>
+
+  <!-- BLOCK LOG -->
+  <section id="block-log">
+    <h2>Live block log</h2>
+    <p>A built-in dashboard is available at <code>http://&lt;proxy-host&gt;:8080/_proxy/</code> — no setup required. It streams new blocks in real time via SSE (Server-Sent Events), shows a running count of blocked requests and affected origins, and color-codes rows by resource type.</p>
+
+    <table>
+      <thead><tr><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>/_proxy/</code></td><td>HTML dashboard — live-updating table</td></tr>
+        <tr><td><code>/_proxy/events</code></td><td>SSE stream — one JSON event per block</td></tr>
+        <tr><td><code>/_proxy/log.json</code></td><td>JSON snapshot — ring buffer of last 1 000 blocks</td></tr>
+      </tbody>
+    </table>
+
+    <p>Each event includes: timestamp · method · full URL · origin · robots.txt reason · matched line number · resource type · User-Agent · Referer · client IP.</p>
+
+    <figure class="screenshot">
+      <img src="img/block-log.png" alt="Live block log dashboard showing recent blocked requests" />
+      <figcaption>The live block log at <code>/_proxy/</code> — rows appear in real time as requests are blocked.</figcaption>
+    </figure>
+  </section>
+
+  <!-- DEVTOOLS -->
+  <section id="devtools">
+    <h2>DevTools integration</h2>
+    <p>Every blocked response carries three custom headers regardless of its status code or content type:</p>
+
+    <pre>X-Robots-Blocked: true
+X-Robots-Txt-Reason: robots-disallow
+X-Robots-Txt-Line: 3</pre>
+
+    <p>Filter the Network panel to show only blocked requests:</p>
+
+    <table>
+      <thead><tr><th>Browser</th><th>Filter expression</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome / Edge</td><td><code>has-response-header:X-Robots-Blocked</code></td></tr>
+        <tr><td>Firefox</td><td>type <code>X-Robots-Blocked</code> in the filter box</td></tr>
+        <tr><td>Safari</td><td>Response Headers column → filter by <code>X-Robots-Blocked</code></td></tr>
+      </tbody>
+    </table>
+
+    <figure class="screenshot">
+      <img src="img/x-robots-header.png" alt="Chrome DevTools Network panel filtered to X-Robots-Blocked header" />
+      <figcaption>Chrome DevTools Network panel filtered to <code>has-response-header:X-Robots-Blocked</code> — every blocked sub-resource visible at a glance.</figcaption>
+    </figure>
+  </section>
+
+  <!-- BROWSER CONTAINER -->
+  <section id="browser-container">
+    <h2>Browser container (noVNC + Chrome)</h2>
+    <p>Run Chrome in a Docker container that is pre-wired to the MITM proxy — no system-wide proxy settings or manual cert-trust steps on your Mac.</p>
+
+    <pre>docker compose -f docker-compose.browser.yml up --build</pre>
+
+    <table>
+      <thead><tr><th>URL</th><th>What you get</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>http://localhost:7900</code></td>
+          <td>noVNC → Chrome inside the container (proxy + CA already configured)</td>
+        </tr>
+        <tr>
+          <td><code>http://localhost:8080/_proxy/</code></td>
+          <td>Live block-log dashboard (open from your Mac browser)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <figure class="screenshot">
+      <img src="img/chromium.png" alt="Chrome running inside Docker via noVNC" />
+      <figcaption>Chrome running inside Docker, accessible via noVNC at <code>localhost:7900</code>. The MITM proxy and CA are already set up — no further configuration needed.</figcaption>
+    </figure>
+
+    <h3>How the CA trust works automatically</h3>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="icon">🔑</div>
+        <h3>Proxy starts first</h3>
+        <p>On first run the proxy generates <code>certs/ca.crt</code> + <code>certs/ca.key</code>. The CA is stored in a shared volume.</p>
+      </div>
+      <div class="card">
+        <div class="icon">⏳</div>
+        <h3>Chrome waits</h3>
+        <p>The Chrome container starts only after the proxy healthcheck passes. The entrypoint script waits up to 60 s for the CA file.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🛡️</div>
+        <h3>NSS import</h3>
+        <p>The entrypoint uses <code>certutil</code> to import the CA into Chrome's NSS database (<code>~/.pki/nssdb</code>) — the only trust store Chromium on Linux reads.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🌐</div>
+        <h3>Proxy policy</h3>
+        <p>A Chrome Managed Policy JSON pre-sets <code>http://robotstxt-proxy:8080</code> as the proxy for all sessions, including noVNC.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:1.5rem">Works on <strong>Apple Silicon</strong> and <strong>Intel Macs</strong> — <code>seleniarm/standalone-chromium</code> publishes a multi-arch manifest (ARM64 + AMD64) and Docker Desktop picks the right variant automatically.</p>
+  </section>
+
+  <!-- CONFIGURATION -->
+  <section id="configuration">
+    <h2>Configuration</h2>
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>PORT</code></td><td><code>8080</code></td><td>Listen port</td></tr>
+        <tr><td><code>HOST</code></td><td><code>0.0.0.0</code></td><td>Listen address</td></tr>
+        <tr><td><code>HTTPS_MODE</code></td><td><code>host-only</code></td><td><code>host-only</code> or <code>mitm</code></td></tr>
+        <tr><td><code>BLOCK_MODE</code></td><td><code>smart</code></td><td><code>smart</code> · <code>403</code> · <code>204</code></td></tr>
+        <tr><td><code>ROBOTS_UA</code></td><td><em>client UA</em></td><td>Fixed user-agent to match instead of the client's own</td></tr>
+        <tr><td><code>CACHE_TTL_MS</code></td><td><code>3600000</code></td><td>robots.txt cache lifetime (ms)</td></tr>
+        <tr><td><code>CACHE_MAX</code></td><td><code>1000</code></td><td>Max cached origins</td></tr>
+        <tr><td><code>ROBOTS_TIMEOUT_MS</code></td><td><code>5000</code></td><td>robots.txt fetch timeout (ms)</td></tr>
+        <tr><td><code>CA_CERT_PATH</code></td><td><code>certs/ca.crt</code></td><td>MITM CA certificate (auto-generated on first run)</td></tr>
+        <tr><td><code>CA_KEY_PATH</code></td><td><code>certs/ca.key</code></td><td>MITM CA private key</td></tr>
+        <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td><code>error</code> · <code>warn</code> · <code>info</code> · <code>debug</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Project layout</h3>
+    <pre>src/
+  server.js     entry — builds everything, wires 'request' + 'connect', graceful shutdown
+  config.js     env vars → validated config object
+  robots.js     RobotsCache — fetch, TTL/LRU cache, in-flight dedup, decide()
+  forward.js    origin forwarding + hop-by-hop header scrubbing (RFC 7230)
+  httpProxy.js  HTTP request handler: gate → smart block response or forward
+  connect.js    CONNECT handler — host-only tunnel or delegate to MITM
+  mitm.js       optional TLS interception (lazy node-forge, CA + per-host leaf certs)
+  blockLog.js   ring buffer + SSE fan-out + self-contained dashboard HTML</pre>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/VorticonCmdr/robotstxtProxy">GitHub</a> ·
+    MIT License ·
+    Uses <a href="https://github.com/VorticonCmdr/google-robotstxt-parser">google-robotstxt-parser</a>
+  </p>
+</footer>
+
+</body>
+</html>
