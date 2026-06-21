@@ -133,10 +133,11 @@ function blockHtml(targetUrl, decision) {
 }
 
 // /_proxy/ dashboard routes — served when the proxy is hit directly (not used as a proxy).
-function serveDashboard(req, res, blockLog) {
+function serveDashboard(req, res, blockLog, robots) {
   const url = req.url;
+  const path = url.split('?')[0];
 
-  if (url === '/_proxy/' || url === '/_proxy') {
+  if (path === '/_proxy/' || path === '/_proxy') {
     if (!blockLog) {
       res.writeHead(503, { 'content-type': 'text/plain' });
       return res.end('Dashboard not available (blockLog not configured)\n');
@@ -145,7 +146,7 @@ function serveDashboard(req, res, blockLog) {
     return res.end(blockLog.htmlDashboard());
   }
 
-  if (url === '/_proxy/events') {
+  if (path === '/_proxy/events') {
     if (!blockLog) {
       res.writeHead(503, { 'content-type': 'text/plain' });
       return res.end('Log not available\n');
@@ -154,10 +155,38 @@ function serveDashboard(req, res, blockLog) {
     return;
   }
 
-  if (url === '/_proxy/log.json') {
+  if (path === '/_proxy/log.json') {
     const events = blockLog ? blockLog.snapshot() : [];
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify(events, null, 2) + '\n');
+  }
+
+  if (path === '/_proxy/cache.json') {
+    const entries = robots ? robots.getAll() : [];
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify(entries) + '\n');
+  }
+
+  if (path === '/_proxy/cache') {
+    if (req.method === 'DELETE') {
+      const origin = new URL(url, 'http://x').searchParams.get('origin');
+      if (origin && robots) robots.remove(origin);
+      res.writeHead(204);
+      return res.end();
+    }
+    if (req.method === 'PUT') {
+      let raw = '';
+      req.on('data', c => { raw += c; });
+      req.on('end', () => {
+        try {
+          const { origin, body } = JSON.parse(raw);
+          if (origin && robots) robots.override(origin, body ?? '');
+        } catch { /* invalid JSON — still respond 204 */ }
+        res.writeHead(204);
+        res.end();
+      });
+      return; // response completed asynchronously
+    }
   }
 
   return false; // not a dashboard route
@@ -182,7 +211,7 @@ export function createRequestHandler({ robots, config, logger, blockLog, mode = 
           if (isLoopback && effectivePort === config.port &&
               (u.pathname === '/' || u.pathname.startsWith('/_proxy'))) {
             req.url = u.pathname + u.search;
-            const handled = serveDashboard(req, res, blockLog);
+            const handled = serveDashboard(req, res, blockLog, robots);
             if (handled !== false) return;
           }
         } catch { /* malformed URL, fall through to normal handling */ }
@@ -198,7 +227,7 @@ export function createRequestHandler({ robots, config, logger, blockLog, mode = 
         return res.end('robotstxt-proxy: OK\n');
       }
       if (req.url === '/' || req.url.startsWith('/_proxy')) {
-        const handled = serveDashboard(req, res, blockLog);
+        const handled = serveDashboard(req, res, blockLog, robots);
         if (handled !== false) return;
       }
       return badRequest(res, 'This is a forward proxy; send absolute-form requests.');

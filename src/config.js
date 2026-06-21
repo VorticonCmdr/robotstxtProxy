@@ -37,7 +37,7 @@ export function loadConfig(env = process.env) {
       blockMode,
       // Fixed UA override; when unset we use the request's own User-Agent.
       robotsUa: str('ROBOTS_UA', null),
-      cacheTtlMs: int('CACHE_TTL_MS', 3_600_000),
+      cacheTtlMs: int('CACHE_TTL_MS', 86_400_000),
       cacheMax: int('CACHE_MAX', 1000),
       robotsTimeoutMs: int('ROBOTS_TIMEOUT_MS', 5000),
       caCertPath: str('CA_CERT_PATH', 'certs/ca.crt'),

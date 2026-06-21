@@ -67,6 +67,7 @@ export class RobotsCache {
   async _fetchEntry(origin) {
     const robotsUrl = `${origin}/robots.txt`;
     let entry;
+    let ttlMs = this.config.cacheTtlMs;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.config.robotsTimeoutMs);
@@ -79,6 +80,13 @@ export class RobotsCache {
         });
       } finally {
         clearTimeout(timer);
+      }
+
+      // Respect Cache-Control: max-age from the robots.txt response, capped at config ceiling.
+      const cc = (res.headers?.get?.('cache-control') || '').toLowerCase();
+      const maxAgeMatch = /max-age\s*=\s*(\d+)/.exec(cc);
+      if (maxAgeMatch) {
+        ttlMs = Math.min(parseInt(maxAgeMatch[1], 10) * 1000, this.config.cacheTtlMs);
       }
 
       if (res.ok) {
@@ -96,9 +104,46 @@ export class RobotsCache {
       this.logger?.warn('robots fetch failed', { origin, error: err.message });
     }
 
-    entry.expires = this._now() + this.config.cacheTtlMs;
+    entry.expires = this._now() + ttlMs;
+    entry.ttlMs = ttlMs;
+    entry.isOverride = false;
     this._set(origin, entry);
     return entry;
+  }
+
+  /** Returns a snapshot of all cache entries for the dashboard UI. */
+  getAll() {
+    const now = this._now();
+    return [...this.cache.entries()].map(([origin, e]) => ({
+      origin,
+      policy: e.policy,
+      expiresAt: e.expires,
+      ttlMs: e.ttlMs ?? this.config.cacheTtlMs,
+      isOverride: e.isOverride ?? false,
+      remainingMs: Math.max(0, e.expires - now),
+      body: e.body ?? '',
+    }));
+  }
+
+  /** Removes an origin from the cache; the next request will re-fetch. */
+  remove(origin) {
+    this.cache.delete(origin);
+  }
+
+  /** Manually pins a robots.txt body for an origin without a network fetch. */
+  override(origin, body) {
+    const entry = {
+      policy: 'parse',
+      body,
+      expires: this._now() + this.config.cacheTtlMs,
+      ttlMs: this.config.cacheTtlMs,
+      isOverride: true,
+    };
+    if (this.cache.has(origin)) this.cache.delete(origin);
+    this.cache.set(origin, entry);
+    while (this.cache.size > this.config.cacheMax) {
+      this.cache.delete(this.cache.keys().next().value);
+    }
   }
 
   _set(origin, entry) {
