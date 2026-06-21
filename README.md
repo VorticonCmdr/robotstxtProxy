@@ -1,6 +1,6 @@
 # robotstxtProxy
 
-**[→ Project website](https://VorticonCmdr.github.io/robotstxtProxy/)** — screenshots, full feature walkthrough, configuration reference.
+**[→ Project website](https://vorticoncmdr.github.io/robotstxtProxy/)** — screenshots, full feature walkthrough, configuration reference.
 
 A small Node.js **forward HTTP(S) proxy** that allows or blocks every request based on the
 target origin's `robots.txt`. Point a browser (or any HTTP client) at it and it will silently
