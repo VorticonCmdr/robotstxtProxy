@@ -86,22 +86,31 @@ Filter the Network panel to show only blocked requests:
 
 Click any matching row → Response Headers to see the reason and the matched robots.txt line.
 
-## Live block log
+## Dashboard
 
 A self-contained web dashboard is available at `http://<proxy-host>:<port>/_proxy/` with no
-extra setup required.
+extra setup required. It has two tabs:
+
+**Block Log** — live-updating table of every blocked request via EventSource. Each row
+includes: timestamp · method · full URL · resource type · robots.txt reason · matched line ·
+Referer · client IP. Rows are prepended in real time and color-coded by resource type.
+
+**robots.txt Cache** — inspect, add, edit, and delete cached robots.txt entries per origin.
+Columns show policy (parse / allow / block), time until expiry, effective TTL, and whether
+the entry was fetched from the origin or manually overridden. Actions:
+
+- **View** — read-only modal with the full cached robots.txt body
+- **Edit** — overrides the body for an origin without a network fetch
+- **Delete** — evicts an entry so the next request re-fetches it live
+- **Add override** — pins custom robots.txt rules for any origin
 
 ```
-/_proxy/           HTML dashboard — live-updating table via EventSource
-/_proxy/events     SSE stream   — one JSON event per block, real-time
-/_proxy/log.json   JSON snapshot — ring buffer of the last 1000 blocks
+/_proxy/           HTML dashboard (Block Log + robots.txt Cache tabs)
+/_proxy/events     SSE stream     — one JSON event per block, real-time
+/_proxy/log.json   JSON snapshot  — ring buffer of the last 1000 blocks
+/_proxy/cache.json JSON snapshot  — all cached origins with TTL and body
+/_proxy/cache      PUT / DELETE   — create/update or evict a cache entry
 ```
-
-Each event includes: timestamp · method · full URL · origin · robots.txt reason · matched
-line number · resource type · User-Agent · Referer · client IP.
-
-The dashboard prepends new rows in real time, color-codes them by resource type, and shows a
-running count of blocked requests and affected origins. No page refresh needed.
 
 ## Configuration
 
@@ -112,7 +121,7 @@ running count of blocked requests and affected origins. No page refresh needed.
 | `HTTPS_MODE` | `host-only` | `host-only` or `mitm` |
 | `BLOCK_MODE` | `smart` | `smart` · `403` · `204` — see above |
 | `ROBOTS_UA` | _(client UA)_ | fixed user-agent to match instead of the client's own |
-| `CACHE_TTL_MS` | `3600000` | robots.txt cache lifetime (ms) |
+| `CACHE_TTL_MS` | `86400000` | robots.txt cache ceiling (ms); actual TTL may be shorter if the origin returns `Cache-Control: max-age` |
 | `CACHE_MAX` | `1000` | max cached origins |
 | `ROBOTS_TIMEOUT_MS` | `5000` | robots.txt fetch timeout (ms) |
 | `CA_CERT_PATH` | `certs/ca.crt` | MITM CA certificate (auto-generated on first run) |
